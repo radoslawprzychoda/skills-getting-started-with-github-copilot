@@ -10,8 +10,10 @@ document.addEventListener("DOMContentLoaded", () => {
       const response = await fetch("/activities");
       const activities = await response.json();
 
-      // Clear loading message
+      // Clear loading message and previous content
       activitiesList.innerHTML = "";
+      // Clear previous select options (keep placeholder)
+      activitySelect.querySelectorAll("option:not([value=''])").forEach(o => o.remove());
 
       // Populate activities list
       Object.entries(activities).forEach(([name, details]) => {
@@ -20,12 +22,48 @@ document.addEventListener("DOMContentLoaded", () => {
 
         const spotsLeft = details.max_participants - details.participants.length;
 
-        activityCard.innerHTML = `
-          <h4>${name}</h4>
-          <p>${details.description}</p>
-          <p><strong>Schedule:</strong> ${details.schedule}</p>
-          <p><strong>Availability:</strong> ${spotsLeft} spots left</p>
-        `;
+        // Build card content
+        const h4 = document.createElement("h4");
+        h4.textContent = name;
+
+        const desc = document.createElement("p");
+        desc.textContent = details.description;
+
+        const sched = document.createElement("p");
+        sched.innerHTML = `<strong>Schedule:</strong> ${details.schedule}`;
+
+        const avail = document.createElement("p");
+        avail.innerHTML = `<strong>Availability:</strong> ${spotsLeft} spots left`;
+
+        // Participants section
+        const partSection = document.createElement("div");
+        partSection.className = "participants-section";
+        const partHeading = document.createElement("strong");
+        partHeading.textContent = "Participants:";
+        partSection.appendChild(partHeading);
+
+        const ul = document.createElement("ul");
+        ul.className = "participants-list";
+        if (Array.isArray(details.participants) && details.participants.length) {
+          details.participants.forEach(p => {
+            const li = document.createElement("li");
+            li.textContent = p;
+            ul.appendChild(li);
+          });
+        } else {
+          const li = document.createElement("li");
+          li.textContent = "No participants yet";
+          li.className = "muted";
+          ul.appendChild(li);
+        }
+        partSection.appendChild(ul);
+
+        // Assemble card
+        activityCard.appendChild(h4);
+        activityCard.appendChild(desc);
+        activityCard.appendChild(sched);
+        activityCard.appendChild(avail);
+        activityCard.appendChild(partSection);
 
         activitiesList.appendChild(activityCard);
 
@@ -60,11 +98,13 @@ document.addEventListener("DOMContentLoaded", () => {
 
       if (response.ok) {
         messageDiv.textContent = result.message;
-        messageDiv.className = "success";
+        messageDiv.className = "message success";
         signupForm.reset();
+        // Refresh activities to show new participant
+        fetchActivities();
       } else {
         messageDiv.textContent = result.detail || "An error occurred";
-        messageDiv.className = "error";
+        messageDiv.className = "message error";
       }
 
       messageDiv.classList.remove("hidden");
@@ -75,7 +115,7 @@ document.addEventListener("DOMContentLoaded", () => {
       }, 5000);
     } catch (error) {
       messageDiv.textContent = "Failed to sign up. Please try again.";
-      messageDiv.className = "error";
+      messageDiv.className = "message error";
       messageDiv.classList.remove("hidden");
       console.error("Error signing up:", error);
     }
